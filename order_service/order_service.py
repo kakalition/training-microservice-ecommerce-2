@@ -64,6 +64,7 @@ def send_rabbitmq_message(message):
         routing_key='product_queue',
         body=message)
     connection.close()
+
 @app.route('/order-service/login', methods=['POST'])
 def login():
     data = request.json
