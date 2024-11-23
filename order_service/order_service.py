@@ -5,6 +5,7 @@ from functools import wraps
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from flask_sqlalchemy import SQLAlchemy
 import pika
+import redis
 
 import rpc
 import rpc.rpc_client
@@ -14,6 +15,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///products.db'  # SQLite for Pr
 
 jwtmain = JWTManager(app)
 db = SQLAlchemy(app)
+
+redis_client = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
 
 # Setup the JWT configuration
 app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # Change this to a secure key in production
@@ -56,6 +59,7 @@ def send_rabbitmq_message(message):
         routing_key='product_queue',
         body=message)
     connection.close()
+
 @app.route('/login', methods=['POST'])
 def login():
     data = request.json
@@ -97,6 +101,7 @@ def jwt_required_custom(fn):
     return wrapper
 
 @app.route('/orders', methods=['POST'])
+@jwt_required()
 @jwt_required_custom
 def create_order():
     data = request.json
@@ -111,6 +116,8 @@ def create_order():
 
     price = response["price"]
     total_price = price * quantity
+
+    redis_client.lpush(get_jwt_identity(), f"Order dengan id produk {product_id} sejumlah {quantity}")
 
     # Insert order into the database
     conn_order = sqlite3.connect('orders.db')
@@ -133,6 +140,23 @@ def list_orders():
 
     return jsonify([{"id": order[0], "user_id": order[1], "product_id": order[2],
                      "quantity": order[3], "total_price": order[4]} for order in orders])
+
+@app.route('/identity', methods=['GET'])
+@jwt_required_custom
+@jwt_required()
+def get_identity():
+    return get_jwt_identity()
+
+@app.route('/notifications', methods=['GET'])
+@jwt_required_custom
+@jwt_required()
+def get_notifications():
+    username = get_jwt_identity()
+    result = redis_client.lpop(username, 100) or []
+
+    print(f"LPOP: {username} - {result}")
+
+    return result
 
 if __name__== '__main__':
     init_order_db()

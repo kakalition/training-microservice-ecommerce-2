@@ -1,7 +1,12 @@
 from flask import Flask, request, jsonify
 import sqlite3
 
+from flask_jwt_extended import JWTManager, jwt_required
+
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///products.db'  # SQLite for Product Service DB
+app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # Change this to a secure secret key
+jwtmain = JWTManager(app)
 
 # Initialize SQLite Database
 def init_user_db():
@@ -17,6 +22,16 @@ def init_user_db():
     conn.commit()
     conn.close()
 
+@app.route('/users', methods=['GET'])
+def list_users():
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM users')
+    users = cursor.fetchall()
+    conn.close()
+    return jsonify([{"id": user[0], "name": user[1], "email": user[2]} for user in users])
+
+
 @app.route('/users', methods=['POST'])
 def create_user():
     data = request.json
@@ -31,15 +46,6 @@ def create_user():
         return jsonify({"error": "Email already exists"}), 400
     finally:
         conn.close()
-
-@app.route('/users', methods=['GET'])
-def list_users():
-    conn = sqlite3.connect('users.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM users')
-    users = cursor.fetchall()
-    conn.close()
-    return jsonify([{"id": user[0], "name": user[1], "email": user[2]} for user in users])
 
 if __name__ == '__main__':
     init_user_db()
