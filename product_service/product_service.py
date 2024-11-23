@@ -1,15 +1,20 @@
+import flask
 import pika
 import threading
 from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, jwt_required
 from flask_sqlalchemy import SQLAlchemy
 import json
+
+import redis
 # Initialize Flask app and extensions
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///products.db'  # SQLite for Product Service DB
 app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # Change this to a secure secret key
 db = SQLAlchemy(app)
 jwtmain = JWTManager(app)
+
+redis_client = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
 
 # Product Model (Example for SQLite database)
 class Product(db.Model):
@@ -97,9 +102,31 @@ def create_product():
 @app.route('/products', methods=['GET'])
 @jwt_required()
 def get_products():
-    products = Product.query.all()
-    product_list = [{"id": p.id, "name": p.name, "price": p.price, "description": p.description} for p in products]
-    return jsonify(product_list), 200
+    query = request.args.get('query')
+
+    source = "CACHE"
+    products = redis_client.get(query)
+    if not products:
+        temp = Product.query.filter(Product.name.ilike(f'%{query}%')).all()
+        temp = [{"id": p.id, "name": p.name, "price": p.price, "description": p.description} for p in temp]
+        print(f"json {json.dumps(temp)}")
+        source = "DATABASE"
+        redis_client.setex(query, 2, json.dumps(temp))
+
+        products = redis_client.get(query)
+
+    products = json.loads(products)
+    print(f"products: {products}")
+    product_list = [{"id": p['id'], "name": p['name'], "price": p['price'], "description": p['description']} for p in products]
+
+    resp = flask.make_response(jsonify({
+        'query': query,
+        'data': product_list
+    }))
+
+    resp.headers['X-Source'] = source
+
+    return resp
 
 # Get product by ID (Protected by JWT)
 @app.route('/product/<int:id>', methods=['GET'])
