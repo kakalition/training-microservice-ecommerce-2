@@ -132,7 +132,6 @@ def get_products():
     if not products:
         temp = Product.query.filter(Product.name.ilike(f'%{query}%')).all()
         temp = [{"id": p.id, "name": p.name, "price": p.price, "description": p.description} for p in temp]
-        print(f"json {json.dumps(temp)}")
         source = "DATABASE"
         redis_client.setex(query, 2, json.dumps(temp))
 
@@ -213,6 +212,68 @@ def invalid_token_callback(error):
 @jwtmain.unauthorized_loader
 def unauthorized_callback(error):
     return jsonify({"msg": "Missing or invalid token"}), 401
+
+@app.route('/product-service/internal/db/products', methods=['GET'])
+@jwt_required()
+def internal_db_get_products():
+    redis_client.flushall()
+    query = request.args.get('query')
+
+    temp = Product.query.filter(Product.name.ilike(f'%{query}%')).all()
+    result = [{"id": p.id, "name": p.name, "price": p.price, "description": p.description} for p in temp]
+
+    resp = flask.make_response(jsonify({
+        'query': query,
+        'data': result
+    }))
+
+    resp.headers['X-Source'] = "DATABASE"
+
+    return resp
+
+@app.route('/product-service/internal/cache/products', methods=['GET'])
+@jwt_required()
+def internal_cache_get_products():
+    query = request.args.get('query')
+
+    source = "CACHE"
+    products = redis_client.get(query)
+    if not products:
+        temp = Product.query.filter(Product.name.ilike(f'%{query}%')).all()
+        temp = [{"id": p.id, "name": p.name, "price": p.price, "description": p.description} for p in temp]
+        source = "DATABASE"
+        redis_client.setex(query, 3600, json.dumps(temp))
+
+        products = redis_client.get(query)
+
+    products = json.loads(products)
+    print(f"products: {products}")
+    product_list = [{"id": p['id'], "name": p['name'], "price": p['price'], "description": p['description']} for p in products]
+
+    resp = flask.make_response(jsonify({
+        'query': query,
+        'data': product_list
+    }))
+
+    resp.headers['X-Source'] = source
+
+    return resp
+
+# Create a new product (Protected by JWT)
+@app.route('/product-service/product/fill', methods=['POST'])
+@jwt_required()
+def create_product_fill():
+    for i in range(10000):
+        name = "Test Kayu"
+        price = 1000000
+        description = "Test Kayu"
+
+        new_product = Product(name=name, price=price, description=description)
+        db.session.add(new_product)
+        db.session.commit()
+
+    return True
+
 
 # Starting Flask app with background RabbitMQ consumer
 if __name__ == '__main__':
