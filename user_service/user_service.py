@@ -17,7 +17,7 @@ def init_user_db():
     conn.commit()
     conn.close()
 
-@app.route('/users', methods=['POST'])
+@app.route('/user-service/users', methods=['POST'])
 def create_user():
     data = request.json
     name, email = data['name'], data['email']
@@ -32,7 +32,7 @@ def create_user():
     finally:
         conn.close()
 
-@app.route('/users', methods=['GET'])
+@app.route('/user-service/users', methods=['GET'])
 def list_users():
     conn = sqlite3.connect('users.db')
     cursor = conn.cursor()

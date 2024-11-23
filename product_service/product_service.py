@@ -43,11 +43,23 @@ def get_rabbitmq_channel():
     channel = connection.channel()
     return channel
 
-
+def check_rabbitmq_connection():
+    try:
+        # Try to connect to RabbitMQ
+        connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))  # Adjust hostname if needed
+        connection.close()
+        return True
+    except pika.exceptions.AMQPConnectionError as e:
+        print(f"Error connecting to RabbitMQ: {e}")
+        return False
+    
 def rpc_product_price():
+    while not check_rabbitmq_connection():
+        print("Waiting for RabbitMQ to become available...")
+        time.sleep(5)  # Retry every 5 seconds
+
     print("Initializing RPC Product Price")
 
-    time.sleep(5)
 
     connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
     channel = connection.channel()
@@ -86,7 +98,7 @@ def rpc_product_price():
     channel.start_consuming()
 
 # Create a new product (Protected by JWT)
-@app.route('/product', methods=['POST'])
+@app.route('/product-service/product', methods=['POST'])
 @jwt_required()
 def create_product():
     name = request.json.get('name', None)
@@ -110,7 +122,7 @@ def create_product():
     return jsonify({"msg": "Product created successfully"}), 201
 
 # Get all products (Protected by JWT)
-@app.route('/products', methods=['GET'])
+@app.route('/product-service/products', methods=['GET'])
 @jwt_required()
 def get_products():
     query = request.args.get('query')
@@ -140,7 +152,7 @@ def get_products():
     return resp
 
 # Get product by ID (Protected by JWT)
-@app.route('/product/<int:id>', methods=['GET'])
+@app.route('/product-service/product/<int:id>', methods=['GET'])
 @jwt_required()
 def get_product(id):
     product = Product.query.get(id)
@@ -155,7 +167,7 @@ def get_product(id):
     }), 200
 
 # Update product (Protected by JWT)
-@app.route('/product/<int:id>', methods=['PUT'])
+@app.route('/product-service/product/<int:id>', methods=['PUT'])
 @jwt_required()
 def update_product(id):
     product = Product.query.get(id)
@@ -176,7 +188,7 @@ def update_product(id):
     return jsonify({"msg": "Product updated successfully"}), 200
 
 # Delete product (Protected by JWT)
-@app.route('/product/<int:id>', methods=['DELETE'])
+@app.route('/product-service/product/<int:id>', methods=['DELETE'])
 @jwt_required()
 def delete_product(id):
     product = Product.query.get(id)
