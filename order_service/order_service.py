@@ -59,8 +59,7 @@ def send_rabbitmq_message(message):
         routing_key='product_queue',
         body=message)
     connection.close()
-
-@app.route('/login', methods=['POST'])
+@app.route('/order-service/login', methods=['POST'])
 def login():
     data = request.json
     username = data.get('username')
@@ -100,8 +99,7 @@ def jwt_required_custom(fn):
 
     return wrapper
 
-@app.route('/orders', methods=['POST'])
-@jwt_required()
+@app.route('/order-service/orders', methods=['POST'])
 @jwt_required_custom
 def create_order():
     data = request.json
@@ -129,7 +127,7 @@ def create_order():
 
     return jsonify({"message": "Order created", "total_price": total_price}), 201
 
-@app.route('/orders', methods=['GET'])
+@app.route('/order-service/orders', methods=['GET'])
 @jwt_required_custom
 def list_orders():
     conn = sqlite3.connect('orders.db')

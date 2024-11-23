@@ -22,17 +22,7 @@ def init_user_db():
     conn.commit()
     conn.close()
 
-@app.route('/users', methods=['GET'])
-def list_users():
-    conn = sqlite3.connect('users.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM users')
-    users = cursor.fetchall()
-    conn.close()
-    return jsonify([{"id": user[0], "name": user[1], "email": user[2]} for user in users])
-
-
-@app.route('/users', methods=['POST'])
+@app.route('/user-service/users', methods=['POST'])
 def create_user():
     data = request.json
     name, email = data['name'], data['email']
@@ -46,6 +36,15 @@ def create_user():
         return jsonify({"error": "Email already exists"}), 400
     finally:
         conn.close()
+
+@app.route('/user-service/users', methods=['GET'])
+def list_users():
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM users')
+    users = cursor.fetchall()
+    conn.close()
+    return jsonify([{"id": user[0], "name": user[1], "email": user[2]} for user in users])
 
 if __name__ == '__main__':
     init_user_db()
