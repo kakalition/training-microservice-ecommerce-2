@@ -85,3 +85,5 @@ Description: To get all users
 #### [POST] /users
 
 Description: To create a new user
+
+[![Video](https://github.com/kakalition/training-microservice-ecommerce-2/blob/46826ed569cbafbfd381dec0c0d6b9fdf9d5246f/thumbnail.png)](https://drive.google.com/file/d/1iSvB8qLVIJ0XxniIW3MlT35bXy1EJuZa)
