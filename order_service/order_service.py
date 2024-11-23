@@ -139,13 +139,13 @@ def list_orders():
     return jsonify([{"id": order[0], "user_id": order[1], "product_id": order[2],
                      "quantity": order[3], "total_price": order[4]} for order in orders])
 
-@app.route('/identity', methods=['GET'])
+@app.route('/order-service/identity', methods=['GET'])
 @jwt_required_custom
 @jwt_required()
 def get_identity():
     return get_jwt_identity()
 
-@app.route('/notifications', methods=['GET'])
+@app.route('/order-service/notifications', methods=['GET'])
 @jwt_required_custom
 @jwt_required()
 def get_notifications():
