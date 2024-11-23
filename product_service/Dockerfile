@@ -17,5 +17,5 @@ COPY . .
 EXPOSE 5002
 
 # Start the service
-CMD ["python", "product_service.py"]
+CMD ["python", "-u", "product_service.py"]
 

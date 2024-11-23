@@ -19,5 +19,5 @@ EXPOSE 5003
 CMD "python -m ensurepip --upgrade"
 
 # Start the service
-CMD ["python", "order_service.py"]
+CMD ["python", "-u", "order_service.py"]
 

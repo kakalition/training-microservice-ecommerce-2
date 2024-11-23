@@ -1,3 +1,4 @@
+import time
 import flask
 import pika
 import threading
@@ -44,6 +45,10 @@ def get_rabbitmq_channel():
 
 
 def rpc_product_price():
+    print("Initializing RPC Product Price")
+
+    time.sleep(5)
+
     connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
     channel = connection.channel()
 
@@ -51,27 +56,33 @@ def rpc_product_price():
     channel.queue_declare(queue='rpc_product_price')
 
     def on_request(ch, method, properties, body):
+        print(f"ON REQUEST Body: {body}")
         request = json.loads(body.decode())
         product_id = request.get('product_id')
         
         # Fetch product price
-        product = Product.query.get(product_id)
-        if product:
-            response = {"price": product.price, "product_id": product_id}
-        else:
-            response = {"error": f"Product with ID {product_id} not found."}
-        
-        # Send response back to the client
-        ch.basic_publish(
-            exchange='',
-            routing_key=properties.reply_to,
-            properties=pika.BasicProperties(correlation_id=properties.correlation_id),
-            body=json.dumps(response)
-        )
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+        with app.app_context():
+            product = Product.query.get(product_id)
+
+            if product:
+                response = {"price": product.price, "product_id": product_id}
+            else:
+                response = {"error": f"Product with ID {product_id} not found."}
+            
+            # Send response back to the client
+            channel.basic_publish(
+                exchange='',
+                routing_key='rpc_product_price',
+                # properties=pika.BasicProperties(correlation_id=properties.correlation_id),
+                body=json.dumps(response)
+            )
+
+            channel.basic_ack(delivery_tag=method.delivery_tag)
 
     channel.basic_consume(queue='rpc_product_price', on_message_callback=on_request)
+
     print("Awaiting RPC requests...")
+
     channel.start_consuming()
 
 # Create a new product (Protected by JWT)

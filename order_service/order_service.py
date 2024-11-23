@@ -5,14 +5,15 @@ from functools import wraps
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from flask_sqlalchemy import SQLAlchemy
 import pika
-from rpc_client import RpcClient
+
+import rpc
+import rpc.rpc_client
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///products.db'  # SQLite for Product Service DB
 
 jwtmain = JWTManager(app)
 db = SQLAlchemy(app)
-
 
 # Setup the JWT configuration
 app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # Change this to a secure key in production
@@ -52,8 +53,8 @@ def send_rabbitmq_message(message):
 
     # Kirim pesan
     channel.basic_publish(exchange='',
-                          routing_key='product_queue',
-                          body=message)
+        routing_key='product_queue',
+        body=message)
     connection.close()
 @app.route('/login', methods=['POST'])
 def login():
@@ -102,8 +103,8 @@ def create_order():
     user_id, product_id, quantity = data['user_id'], data['product_id'], data['quantity']
 
     # Request price from product service
-    rpc_client = RpcClient()
-    response = rpc_client.call(product_id)
+    client = rpc.rpc_client.RpcClient.get_instance()
+    response = client.call(product_id)
 
     if "error" in response:
         return jsonify({"error": response["error"]}), 404
