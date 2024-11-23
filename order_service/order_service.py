@@ -7,11 +7,16 @@ from flask_sqlalchemy import SQLAlchemy
 import pika
 import redis
 
+from flask_sock import Sock
+
 import rpc
 import rpc.rpc_client
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///products.db'  # SQLite for Product Service DB
+
+sock = Sock(app)
+sock.init_app(app)
 
 jwtmain = JWTManager(app)
 db = SQLAlchemy(app)
@@ -101,6 +106,7 @@ def jwt_required_custom(fn):
 
 @app.route('/order-service/orders', methods=['POST'])
 @jwt_required_custom
+@jwt_required()
 def create_order():
     data = request.json
     user_id, product_id, quantity = data['user_id'], data['product_id'], data['quantity']
@@ -116,6 +122,7 @@ def create_order():
     total_price = price * quantity
 
     redis_client.lpush(get_jwt_identity(), f"Order dengan id produk {product_id} sejumlah {quantity}")
+    redis_client.publish("NOTIFICATION", f"Order dengan id produk {product_id} sejumlah {quantity}")
 
     # Insert order into the database
     conn_order = sqlite3.connect('orders.db')
@@ -155,6 +162,18 @@ def get_notifications():
     print(f"LPOP: {username} - {result}")
 
     return result
+
+@sock.route('/order-service/echo')
+def echo(ws):
+    ws.send("PING")
+    while True:
+        ws.send("PING")
+
+        pubsub = redis_client.pubsub()
+        pubsub.subscribe('NOTIFICATION')
+
+        for message in pubsub.listen():
+            ws.send(message['data'])
 
 if __name__== '__main__':
     init_order_db()
