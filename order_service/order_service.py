@@ -163,8 +163,8 @@ def get_notifications():
 
     return result
 
-@sock.route('/order-service/echo')
-def echo(ws):
+@sock.route('/order-service/notifications')
+def notification_ws(ws):
     ws.send("PING")
     while True:
         ws.send("PING")
