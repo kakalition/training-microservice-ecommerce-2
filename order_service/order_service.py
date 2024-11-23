@@ -144,7 +144,7 @@ def list_orders():
     conn.close()
 
     return jsonify([{"id": order[0], "user_id": order[1], "product_id": order[2],
-                     "quantity": order[3], "total_price": order[4]} for order in orders])
+        "quantity": order[3], "total_price": order[4]} for order in orders])
 
 @app.route('/order-service/identity', methods=['GET'])
 @jwt_required_custom
